@@ -1,4 +1,5 @@
-CFLAGS := $(CFLAGS) -std=c11 -Wall -Wextra
+CFLAGS  := $(CFLAGS) -std=c11 -Wall -Wextra
+DESTDIR := /
 
 main: CFLAGS += -I src
 main: LDFLAGS += -L. -lkrimskrams -Wl,-rpath,.
@@ -8,6 +9,14 @@ main: test/main.c libkrimskrams.so
 libkrimskrams.so: CFLAGS += -fPIC -shared
 libkrimskrams.so: $(wildcard src/*.c)
 	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
+
+install: libkrimskrams.so
+	install -Dm644 -t $(DESTDIR)/usr/include/krimskrams/ src/*.h
+	install -Dm755 $< $(DESTDIR)/usr/lib/$<
+
+uninstall:
+	$(RM) -r -- $(DESTDIR)/usr/include/krimskrams
+	$(RM)    -- $(DESTDIR)/usr/lib/libkrimskrams.so
 
 valgrind: main
 	valgrind \
