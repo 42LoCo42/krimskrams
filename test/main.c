@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200112L
 
-#include <errno.h>
 #include <string.h>
 
 #include "net.h"
@@ -11,7 +10,8 @@ void client(krk_coro_t* coro, int fd) {
 	size_t got = krk_net_recvEOF(coro, fd, buf, sizeof(buf) - 1);
 	buf[got] = 0;
 
-	strfry(buf);
+	if(strncmp(buf, "quit", 4) == 0) krk_coro_finish(coro, (void*) 1);
+
 	krk_net_sendAll(coro, fd, buf, got);
 	krk_coro_finish(coro, NULL);
 }

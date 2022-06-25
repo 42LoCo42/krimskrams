@@ -1,4 +1,4 @@
-CFLAGS := -std=c11 -Wall -Wextra
+CFLAGS := $(CFLAGS) -std=c11 -Wall -Wextra
 
 main: CFLAGS += -I src
 main: LDFLAGS += -L. -lkrimskrams -Wl,-rpath,.

@@ -77,7 +77,8 @@ int krk_net_multiServer(const struct addrinfo* info, krk_net_client_f cl) {
 	check(krk_pushrd_add$pollfd(&pollfds, server_pfd) < 0,
 		"Could not store server pollfd");
 
-	for(;;) {
+	int running = 1;
+	while(running) {
 		check(poll(pollfds.buf, pollfds.len, -1) < 0, "Could not poll");
 		for(size_t i = 0; i < pollfds.len; ++i) {
 			struct pollfd fd = pollfds.buf[i];
@@ -117,7 +118,10 @@ int krk_net_multiServer(const struct addrinfo* info, krk_net_client_f cl) {
 
 					case FINISHED:
 					case ERRORED:
+						if(coros.buf[i]->result != NULL) running = 0;
 						close(fd.fd);
+						krk_coro_free(coros.buf[i]);
+						free(coros.buf[i]);
 						krk_pushrd_del$coro_p(&coros, i);
 						krk_pushrd_del$pollfd(&pollfds, i);
 						break;
@@ -130,6 +134,14 @@ int krk_net_multiServer(const struct addrinfo* info, krk_net_client_f cl) {
 			}
 		}
 	}
+	
+	for(size_t i = 0; i < coros.len; ++i) {
+		krk_coro_free(coros.buf[i]);
+		free(coros.buf[i]);
+	}
+	free(coros.buf);
+	free(pollfds.buf);
+
 	return 0;
 }
 
