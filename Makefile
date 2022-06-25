@@ -13,6 +13,7 @@ libkrimskrams.so: $(wildcard src/*.c)
 install: libkrimskrams.so
 	install -Dm644 -t $(DESTDIR)/usr/include/krimskrams/ src/*.h
 	install -Dm755 $< $(DESTDIR)/usr/lib/$<
+	strip $(DESTDIR)/usr/lib/$<
 
 uninstall:
 	$(RM) -r -- $(DESTDIR)/usr/include/krimskrams
