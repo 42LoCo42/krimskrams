@@ -1,11 +1,15 @@
 #define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200112L
 
+#include <stdio.h>
 #include <string.h>
 
+#include "eventloop.h"
 #include "net.h"
 
-void client(krk_coro_t* coro, int fd) {
+void client(krk_coro_t* coro, krk_eventloop_t* loop, int fd) {
+	(void) loop;
+
 	char buf[9] = {0};
 	size_t got = krk_net_recvEOF(coro, fd, buf, sizeof(buf) - 1);
 	buf[got] = 0;

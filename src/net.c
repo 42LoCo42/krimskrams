@@ -11,14 +11,10 @@
 #include <unistd.h>
 
 #include "coro.h"
+#include "eventloop.h"
 #include "pushRD.h"
 
 #define check(cond, ...) if(cond) err(1, __VA_ARGS__);
-
-typedef krk_coro_t* coro_p;
-typedef struct pollfd pollfd;
-krk_pushrd_INSTANCE(coro_p);
-krk_pushrd_INSTANCE(pollfd);
 
 int krk_net_lookup(
 	const char* addr,
@@ -40,11 +36,18 @@ int krk_net_lookup(
 	return -1;
 }
 
-static void multiServerAccept(krk_coro_t* coro, int sock) {
+static void multiServerAccept(
+	krk_coro_t* coro,
+	krk_eventloop_t* loop,
+	int sock
+) {
 	for(;;) {
 		int client = accept(sock, NULL, 0);
 		if(client < 0) krk_coro_error(coro);
-		else krk_coro_yield(coro, (void*) (long) client);
+		else {
+			krk_eventloop_addFd(loop, client, coro->extra, NULL);
+			krk_coro_yield(coro, NULL);
+		}
 	}
 }
 
@@ -59,90 +62,9 @@ int krk_net_multiServer(const struct addrinfo* info, krk_net_client_f cl) {
 	check(bind(sock, info->ai_addr, info->ai_addrlen) < 0, "Could not bind");
 	check(listen(sock, 1) < 0, "Could not listen");
 
-	krk_pushrd_t$coro_p coros   = {0};
-	krk_pushrd_t$pollfd pollfds = {0};
-
-	krk_coro_t* server_coro = malloc(sizeof(krk_coro_t));
-	check(server_coro == NULL, "Could not allocate server coroutine");
-	check(krk_coro_mk(server_coro, multiServerAccept, 1, sock) < 0,
-		"Could not build server coroutine");
-	check(krk_pushrd_add$coro_p(&coros,  server_coro) < 0,
-		"Could not store server coroutine");
-
-	struct pollfd server_pfd = {
-		.fd = sock,
-		.events = POLLIN,
-		.revents = 0,
-	};
-	check(krk_pushrd_add$pollfd(&pollfds, server_pfd) < 0,
-		"Could not store server pollfd");
-
-	int running = 1;
-	while(running) {
-		check(poll(pollfds.buf, pollfds.len, -1) < 0, "Could not poll");
-		for(size_t i = 0; i < pollfds.len; ++i) {
-			struct pollfd fd = pollfds.buf[i];
-			if(!fd.revents) continue;
-
-			if(fd.revents & POLLIN) {
-				check(krk_coro_run(coros.buf[i]) < 0,
-					"Could not switch to coroutine");
-
-				switch(coros.buf[i]->state) {
-					case PAUSED:
-						if(i != 0) break;
-							int client_fd = (long) coros.buf[i]->result;
-
-							krk_coro_t* client_coro = malloc(sizeof(krk_coro_t));
-							check(client_coro == NULL,
-								"Could not allocate client coroutine");
-							check(
-								krk_coro_mk(client_coro, cl, 1, client_fd) < 0,
-								"Could not build client coroutine"
-							);
-							check(
-								krk_pushrd_add$coro_p(&coros, client_coro) < 0,
-								"Could not store client coroutine"
-							);
-
-							struct pollfd client_pfd = {
-								.fd = (int) (long) coros.buf[i]->result,
-								.events = POLLIN,
-								.revents = 0,
-							};
-							check(
-								krk_pushrd_add$pollfd(&pollfds, client_pfd) < 0,
-								"Could not store client pollfd"
-							);
-						break;
-
-					case FINISHED:
-					case ERRORED:
-						if(coros.buf[i]->result != NULL) running = 0;
-						close(fd.fd);
-						krk_coro_free(coros.buf[i]);
-						free(coros.buf[i]);
-						krk_pushrd_del$coro_p(&coros, i);
-						krk_pushrd_del$pollfd(&pollfds, i);
-						break;
-
-					default:
-						break;
-				}
-			} else {
-				warnx("unknown event %d on %d\n", fd.revents, fd.fd);
-			}
-		}
-	}
-	
-	for(size_t i = 0; i < coros.len; ++i) {
-		krk_coro_free(coros.buf[i]);
-		free(coros.buf[i]);
-	}
-	free(coros.buf);
-	free(pollfds.buf);
-
-	return 0;
+	krk_eventloop_t loop = {0};
+	krk_eventloop_addFd(&loop, sock, multiServerAccept, cl);
+	return krk_eventloop_run(&loop);
 }
 
 int krk_net_printAddr(const struct addrinfo* info, void* unused) {
