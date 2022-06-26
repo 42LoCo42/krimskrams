@@ -3,6 +3,7 @@
 #include "eventloop.h"
 
 #include <err.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #define check(cond, ...) if(cond) err(1, __VA_ARGS__);
@@ -60,6 +61,9 @@ int krk_eventloop_addFd(
 	krk_eventloop_handler_f handler,
 	void* extra
 ) {
+	check(fcntl(fd, F_SETFL, O_NONBLOCK) < 0,
+		"Could not set file descriptor %d to non-blocking mode", fd);
+
 	krk_coro_t* coro = malloc(sizeof(krk_coro_t));
 	check(coro == NULL, "Could not allocate coroutine");
 	check(krk_coro_mk(coro, handler, 2, loop, fd) < 0,

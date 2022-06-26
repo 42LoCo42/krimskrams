@@ -96,7 +96,7 @@ int krk_net_printAddr(const struct addrinfo* info, void* unused) {
 	return -1;
 }
 
-typedef ssize_t (*doAll_f)(int, void*, size_t, int);
+typedef ssize_t (*doAll_f)(int, void*, size_t);
 
 static size_t doAll(
 	doAll_f fn,
@@ -107,7 +107,7 @@ static size_t doAll(
 	size_t len
 ) {
 	for(size_t i = 0; i < len;) {
-		ssize_t num = fn(fd, buf + i, len - i, MSG_DONTWAIT);
+		ssize_t num = fn(fd, buf + i, len - i);
 		if(num == 0) {
 			if(eofIsError) krk_coro_error(coro); else return i;
 		}
@@ -122,14 +122,14 @@ static size_t doAll(
 	return len;
 }
 
-void krk_net_sendAll(krk_coro_t* coro, int fd, void* buf, size_t len) {
-	doAll((doAll_f) send, 1, coro, fd, buf, len);
+void krk_net_writeAll(krk_coro_t* coro, int fd, void* buf, size_t len) {
+	doAll((doAll_f) write, 1, coro, fd, buf, len);
 }
 
-void krk_net_recvAll(krk_coro_t* coro, int fd, void* buf, size_t len) {
-	doAll(recv, 1, coro, fd, buf, len);
+void krk_net_readAll(krk_coro_t* coro, int fd, void* buf, size_t len) {
+	doAll(read, 1, coro, fd, buf, len);
 }
 
-size_t krk_net_recvEOF(krk_coro_t* coro, int fd, void* buf, size_t len) {
-	return doAll(recv, 0, coro, fd, buf, len);
+size_t krk_net_readEOF(krk_coro_t* coro, int fd, void* buf, size_t len) {
+	return doAll(read, 0, coro, fd, buf, len);
 }

@@ -21,7 +21,7 @@ void stdinReader(krk_coro_t* coro, krk_eventloop_t* loop, int fd) {
 			for(size_t i = 0; i < loop->pollfds.len; ++i) {
 				int target = loop->pollfds.buf[i].fd;
 				if(i == 0 || target == fd) continue;
-				write(target, buf, got);
+				krk_net_writeAll(coro, target, buf, got);
 			}
 		}
 		krk_coro_yield(coro, NULL);
@@ -36,12 +36,12 @@ void client(krk_coro_t* coro, krk_eventloop_t* loop, int fd) {
 	}
 
 	char buf[9] = {0};
-	size_t got = krk_net_recvEOF(coro, fd, buf, sizeof(buf) - 1);
+	size_t got = krk_net_readEOF(coro, fd, buf, sizeof(buf) - 1);
 	buf[got] = 0;
 
 	if(strncmp(buf, "quit", 4) == 0) krk_coro_finish(coro, (void*) 1);
 
-	krk_net_sendAll(coro, fd, buf, got);
+	krk_net_writeAll(coro, fd, buf, got);
 	krk_coro_finish(coro, NULL);
 }
 
