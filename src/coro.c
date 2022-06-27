@@ -27,6 +27,14 @@ int krk_coro_error(krk_coro_t* coro) {
 	return krk_coro_back(coro);
 }
 
+int krk_coro_force(krk_coro_t* coro) {
+	for(;;) {
+		krk_coro_run(coro);
+		if(coro->state == FINISHED) return 0;
+		if(coro->state == ERRORED)  return -1;
+	}
+}
+
 void krk_coro_free(krk_coro_t* coro) {
 	free(coro->coro_ctx.uc_stack.ss_sp);
 }

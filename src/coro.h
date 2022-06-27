@@ -41,10 +41,11 @@ typedef struct {
 	void*            result;
 } krk_coro_t;
 
-int  krk_coro_run     (krk_coro_t* coro);
-int  krk_coro_yield   (krk_coro_t* coro, void* result);
-int  krk_coro_finish  (krk_coro_t* coro, void* result);
-int  krk_coro_error   (krk_coro_t* coro);
-void krk_coro_free    (krk_coro_t* coro);
+int  krk_coro_run   (krk_coro_t* coro);
+int  krk_coro_yield (krk_coro_t* coro, void* result);
+int  krk_coro_finish(krk_coro_t* coro, void* result);
+int  krk_coro_error (krk_coro_t* coro);
+int  krk_coro_force (krk_coro_t* coro);
+void krk_coro_free  (krk_coro_t* coro);
 
 #endif

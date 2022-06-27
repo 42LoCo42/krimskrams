@@ -45,7 +45,20 @@ void client(krk_coro_t* coro, krk_eventloop_t* loop, int fd) {
 	krk_coro_finish(coro, NULL);
 }
 
+void forceTest(krk_coro_t* coro, int error) {
+	for(int i = 0; i < 10; ++i) {
+		printf("iteration %d\n", i);
+		krk_coro_yield(coro, NULL);
+	}
+	if(error) krk_coro_error(coro);
+	else krk_coro_finish(coro, NULL);
+}
+
 int main() {
+	krk_coro_t c = {0};
+	krk_coro_mk(&c, forceTest, 1, 1);
+	printf("result: %d\n", krk_coro_force(&c));
+
 	return krk_net_lookup(
 		"localhost",
 		"37812",
