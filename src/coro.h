@@ -4,25 +4,23 @@
 #include <stdlib.h>
 #include <ucontext.h>
 
-#ifndef KRK_CORO_STACK
-#define KRK_CORO_STACK (1 << 13)
-#endif
+extern size_t krk_coro_stack;
 
-#define krk_coro_mk(coro, func, argc, ...) ({                  \
-	memset(coro, 0, sizeof(krk_coro_t));                       \
-	void* stack = malloc(KRK_CORO_STACK);                      \
-	stack == NULL || getcontext(&coro->coro_ctx) < 0 ? -1 : ({ \
-		coro->coro_ctx.uc_stack.ss_sp = stack;                 \
-		coro->coro_ctx.uc_stack.ss_size = KRK_CORO_STACK;      \
-		makecontext(                                           \
-			&coro->coro_ctx,                                   \
-			(void(*)()) func,                                  \
-			argc + 1,                                          \
-			coro,                                              \
-			__VA_ARGS__                                        \
-		);                                                     \
-		0;                                                     \
-	});                                                        \
+#define krk_coro_mk(coro, func, argc, ...) ({                    \
+	memset(coro, 0, sizeof(krk_coro_t));                         \
+	void* stack = malloc(krk_coro_stack);                        \
+	stack == NULL || getcontext(&(coro)->coro_ctx) < 0 ? -1 : ({ \
+		(coro)->coro_ctx.uc_stack.ss_sp = stack;                 \
+		(coro)->coro_ctx.uc_stack.ss_size = krk_coro_stack;      \
+		makecontext(                                             \
+			&(coro)->coro_ctx,                                   \
+			(void(*)()) func,                                    \
+			argc + 1,                                            \
+			coro,                                                \
+			__VA_ARGS__                                          \
+		);                                                       \
+		0;                                                       \
+	});                                                          \
 })
 
 typedef enum {

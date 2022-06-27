@@ -1,5 +1,7 @@
 #include "coro.h"
 
+size_t krk_coro_stack = 1 << 13;
+
 int krk_coro_run(krk_coro_t* coro) {
 	coro->state = RUNNING;
 	coro->result = NULL;
