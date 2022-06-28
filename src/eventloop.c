@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define check(cond, ...) if(cond) err(1, __VA_ARGS__);
+#define check(cond, ...) if(cond) warn( __VA_ARGS__);
 
 krk_pushrd_add_INSTANCE(coro_p);
 krk_pushrd_del_INSTANCE(coro_p);
@@ -33,7 +33,9 @@ int krk_eventloop_run(krk_eventloop_t* loop) {
 
 				switch(coro->state) {
 					case ERRORED:
-						if(loop->errorHandler != NULL) {
+						if(loop->errorHandler == NULL) {
+							krk_eventloop_delAt(loop, i);
+						} else {
 							if(loop->errorHandler(coro, loop) != 0) {
 								krk_eventloop_delAt(loop, i);
 							}
@@ -47,8 +49,14 @@ int krk_eventloop_run(krk_eventloop_t* loop) {
 					default:
 						break;
 				}
+			} else if(fd.revents & POLLHUP) {
+				printf("hup %d\n", fd.fd);
+				close(fd.fd);
+				krk_eventloop_delAt(loop, i);
+				loop->errorHandler(coro, loop);
 			} else {
-				warnx("unknown event %d on %d\n", fd.revents, fd.fd);
+				warnx("unknown event %d on %d", fd.revents, fd.fd);
+				krk_eventloop_delAt(loop, i);
 			}
 		}
 	}

@@ -39,7 +39,7 @@ void client(krk_coro_t* coro, krk_eventloop_t* loop, int fd) {
 	size_t got = krk_net_readEOF(coro, fd, buf, sizeof(buf) - 1);
 	buf[got] = 0;
 
-	if(strncmp(buf, "quit", 4) == 0) krk_coro_finish(coro, (void*) 1);
+	if(strncmp(buf, "quit", 4) == 0) loop->running = 0;
 
 	krk_net_writeAll(coro, fd, buf, got);
 	krk_coro_finish(coro, NULL);
@@ -58,6 +58,7 @@ int main() {
 	krk_coro_t c = {0};
 	krk_coro_mk(&c, forceTest, 1, 1);
 	printf("result: %d\n", krk_coro_force(&c));
+	krk_coro_free(&c);
 
 	return krk_net_lookup(
 		"localhost",
