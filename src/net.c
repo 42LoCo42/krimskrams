@@ -133,3 +133,16 @@ void krk_net_readAll(krk_coro_t* coro, int fd, void* buf, size_t len) {
 size_t krk_net_readEOF(krk_coro_t* coro, int fd, void* buf, size_t len) {
 	return doAll(read, 0, coro, fd, buf, len);
 }
+
+size_t krk_net_readAny(krk_coro_t* coro, int fd, void* buf, size_t len) {
+	for(;;) {
+		ssize_t got = read(fd, buf, len);
+		if(got < 0) {
+			if(errno == EAGAIN || errno == EWOULDBLOCK) {
+				krk_coro_yield(coro, NULL);
+			} else krk_coro_error(coro);
+		} else {
+			return got;
+		}
+	}
+}
