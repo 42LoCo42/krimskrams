@@ -14,8 +14,8 @@ krk_pushrd_add_INSTANCE(pollfd);
 krk_pushrd_del_INSTANCE(pollfd);
 
 int krk_eventloop_run(krk_eventloop_t* loop) {
-	int running = 1;
-	while(running) {
+	loop->running = 1;
+	while(loop->running) {
 		check(poll(
 			loop->pollfds.buf,
 			loop->pollfds.len,
@@ -26,16 +26,24 @@ int krk_eventloop_run(krk_eventloop_t* loop) {
 			struct pollfd fd = loop->pollfds.buf[i];
 			if(!fd.revents) continue;
 
+			krk_coro_t* coro = loop->coros.buf[i];
 			if(fd.revents & POLLIN) {
-				check(krk_coro_run(loop->coros.buf[i]) < 0,
+				check(krk_coro_run(coro) < 0,
 					"Could not switch to coroutine");
 
-				switch(loop->coros.buf[i]->state) {
-					case FINISHED:
+				switch(coro->state) {
 					case ERRORED:
-						if(loop->coros.buf[i]->result != NULL) running = 0;
+						if(loop->errorHandler != NULL) {
+							if(loop->errorHandler(coro, loop) != 0) {
+								krk_eventloop_delAt(loop, i);
+							}
+						}
+						break;
+
+					case FINISHED:
 						krk_eventloop_delAt(loop, i);
 						break;
+
 					default:
 						break;
 				}
