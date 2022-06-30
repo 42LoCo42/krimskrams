@@ -46,4 +46,14 @@ int  krk_coro_error (krk_coro_t* coro);
 int  krk_coro_force (krk_coro_t* coro);
 void krk_coro_free  (krk_coro_t* coro);
 
+#define krk_coro_forceA(fn, argc, ...) ({               \
+	krk_coro_t c = {0};                                 \
+	krk_coro_mk(&c, fn, argc, __VA_ARGS__) < 0 ? -1 :({ \
+		krk_coro_force(&c) < 0 ? -1 : ({                \
+			krk_coro_free(&c);                          \
+			0;                                          \
+		});                                             \
+	});                                                 \
+})
+
 #endif
